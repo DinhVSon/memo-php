@@ -7,6 +7,7 @@ require '../../common/database.php';
 $user_email = $_POST['user_email'];
 $user_password = $_POST['user_password'];
 
+
 $_SESSION['errors'] = [];
 
 // 空チェック
@@ -34,6 +35,7 @@ if ($statement = $database_handler->prepare('SELECT id, name, password FROM user
     $statement->execute();
 
     $user = $statement->fetch(PDO::FETCH_ASSOC);
+    $id = $user['id'];
     if (!$user || !password_verify($user_password, $user['password'])) {
         $_SESSION['errors'] = ['メールアドレスまたはパスワードが間違っています。'];
         header('Location: ../../login/');
@@ -43,7 +45,27 @@ if ($statement = $database_handler->prepare('SELECT id, name, password FROM user
     $_SESSION['user'] = [
         'name' => $user['name'],
         'id' => $user['id']
-    ];
+    ];  
+    // 更新日が最新のメモ情報を保持
+    if ($statement = $database_handler->prepare(
+        "SELECT id, title, content
+           FROM memos
+          WHERE user_id = :user_id
+          ORDER BY updated_at DESC
+          LIMIT 1"
+    )) {
+        $statement->bindParam(":user_id", $id);
+        $statement->execute();
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $_SESSION['select_memo'] = [
+                'id'      => $result['id'],
+                'title'   => $result['title'],
+                'content' => $result['content']
+            ];
+        }
+    } 
 
     header('Location: ../../memo/');
     exit;
